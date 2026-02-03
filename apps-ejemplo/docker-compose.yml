@@ -1,0 +1,52 @@
+services:
+  web-test:
+    image: nginx:alpine
+    container_name: app-profesor
+    networks:
+      - plataforma_red-proxy # Importante: debe coincidir con el nombre de tu red real
+
+networks:
+  plataforma_red-proxy:
+    external: true
+
+# ## 👥 3. Gestión de Usuarios y Permisos (Requisito 2 y 7)
+#
+# Se ha implementado una capa de automatización para la gestión de usuarios de despliegue,
+# cumpliendo con las políticas de seguridad del sistema operativo.
+#
+# - Script de Automatización:
+#   El script `crear_usuario_deploy.sh` automatiza la creación del usuario,
+#   la asignación al grupo `docker` y la preparación del entorno de trabajo.
+#
+# - Estructura de Trabajo:
+#   Cada usuario dispone de un directorio `~/apps/` aislado, donde gestiona
+#   sus propios proyectos mediante Docker Compose, garantizando que el entorno
+#   del sistema permanezca limpio y organizado.
+#
+# ### Desplegar la App del Profesor
+#
+# La aplicación se gestiona de forma aislada dentro del entorno del usuario de despliegue.
+#
+# 1. Ubicación real:
+#    /home/deploy-profesor/apps/
+#
+# 2. Procedimiento:
+#    - Acceder como usuario `deploy-profesor`.
+#    - Clonar o copiar el proyecto dentro de la carpeta `apps/`.
+#    - Levantar el servicio con el comando:
+#      docker compose up -d
+#
+# 3. Interconexión:
+#    Gracias a que el contenedor se conecta a la red externa `red-proxy`,
+#    el tráfico fluye desde Nginx hacia la aplicación de forma transparente.
+
+
+
+
+
+
+
+
+
+
+
