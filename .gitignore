@@ -1,0 +1,15 @@
+
+certbot/
+data/
+prometheus_data/
+grafana_data/
+portainer_data/
+
+
+certs/
+*.pem
+*.key
+
+
+.DS_Store
+__pycache__/
