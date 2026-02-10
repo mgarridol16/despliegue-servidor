@@ -54,13 +54,7 @@ services:
     volumes:
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/logs:/var/log/letsencrypt
-    entrypoint: >
-      /bin/sh -c "apk add --no-cache curl &&
-      certbot certonly --manual --preferred-challenges dns
-      --manual-auth-hook 'curl -s -k \"https://www.duckdns.org/update?domains=miguel-daw-practica&token=a97bfda5-491e-4349-83a9-278ea7ac3866&txt=\$CERTBOT_VALIDATION\"'
-      --manual-cleanup-hook 'curl -s -k \"https://www.duckdns.org/update?domains=miguel-daw-practica&token=a97bfda5-491e-4349-83a9-278ea7ac3866&txt=removed\"'
-      --non-interactive --agree-tos --email miguel-daw@ejemplo.com
-      -d miguel-daw-practica.duckdns.org"
+    entrypoint: /bin/sh -c "apk add --no-cache curl && certbot certonly --manual --preferred-challenges dns --manual-auth-hook 'curl -s -k \"https://www.duckdns.org/update?domains=miguel-daw-practica&token=a97bfda5-491e-4349-83a9-278ea7ac3866&txt=$$CERTBOT_VALIDATION\"' --manual-cleanup-hook 'curl -s -k \"https://www.duckdns.org/update?domains=miguel-daw-practica&token=a97bfda5-491e-4349-83a9-278ea7ac3866&txt=removed\"' --non-interactive --agree-tos --email miguel-daw@ejemplo.com -d miguel-daw-practica.duckdns.org"
 
 networks:
   red-proxy:
