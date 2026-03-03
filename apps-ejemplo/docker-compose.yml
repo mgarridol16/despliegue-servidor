@@ -1,52 +1,36 @@
+version: '3.8'
+
 services:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # EJEMPLO DE APP SIMPLE (NGINX)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Esta es una aplicación de prueba que simula una web simple.
+  # Replácela con tu propio docker-compose.yml.
+  #
+  # IMPORTANTE:
+  #   1. El nombre del servicio puede ser cualquiera (aquí: web-test)
+  #   2. VIRTUAL_HOST determina el subdominio (p.ej: miapp.mi-dominio.com)
+  #   3. LETSENCRYPT_HOST activa certificado SSL automático
+  #   4. Usa la red EXTERNA "net_proxy" (definida en plataforma/)
+  #
   web-test:
     image: nginx:alpine
     container_name: app-profesor
+    restart: always
+    volumes:
+      - ./index.html:/usr/share/nginx/html/index.html:ro
+    environment:
+      # Estos valores son detectados por nginx-proxy automáticamente
+      - VIRTUAL_HOST=profesor.${MAIN_DOMAIN:-localhost}
+      - VIRTUAL_PORT=80
+      - LETSENCRYPT_HOST=profesor.${MAIN_DOMAIN:-localhost}
     networks:
-      - plataforma_red-proxy # Importante: debe coincidir con el nombre de tu red real
+      - net_proxy  # Red externa del proxy (cambiada v2.0)
+    restart: always
 
 networks:
-  plataforma_red-proxy:
+  # Red externa: debe existir previamente (creada por docker-compose principal)
+  # Ver: crear_usuario_deploy.sh que ejecuta "docker network create net_proxy"
+  net_proxy:
     external: true
-
-# ## 👥 3. Gestión de Usuarios y Permisos (Requisito 2 y 7)
-#
-# Se ha implementado una capa de automatización para la gestión de usuarios de despliegue,
-# cumpliendo con las políticas de seguridad del sistema operativo.
-#
-# - Script de Automatización:
-#   El script `crear_usuario_deploy.sh` automatiza la creación del usuario,
-#   la asignación al grupo `docker` y la preparación del entorno de trabajo.
-#
-# - Estructura de Trabajo:
-#   Cada usuario dispone de un directorio `~/apps/` aislado, donde gestiona
-#   sus propios proyectos mediante Docker Compose, garantizando que el entorno
-#   del sistema permanezca limpio y organizado.
-#
-# ### Desplegar la App del Profesor
-#
-# La aplicación se gestiona de forma aislada dentro del entorno del usuario de despliegue.
-#
-# 1. Ubicación real:
-#    /home/deploy-profesor/apps/
-#
-# 2. Procedimiento:
-#    - Acceder como usuario `deploy-profesor`.
-#    - Clonar o copiar el proyecto dentro de la carpeta `apps/`.
-#    - Levantar el servicio con el comando:
-#      docker compose up -d
-#
-# 3. Interconexión:
-#    Gracias a que el contenedor se conecta a la red externa `red-proxy`,
-#    el tráfico fluye desde Nginx hacia la aplicación de forma transparente.
-
-
-
-
-
-
-
-
-
-
-
+    name: net_proxy

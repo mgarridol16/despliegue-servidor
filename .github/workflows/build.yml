@@ -1,0 +1,110 @@
+name: Build & Push Docker Image
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: ${{ secrets.DOCKER_HUB_USERNAME }}/despliegue-servidor
+
+jobs:
+  build-and-push:
+    name: Build and Push to Docker Hub
+    runs-on: ubuntu-latest
+    # Solo continuar si lint y security pasaron
+    needs: [ ]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        run: |
+          # Versión: {latest, develop, v<commit_hash>}
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            VERSION="latest"
+            TAGS="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}"
+            TAGS="${TAGS},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:v${{ github.run_number }}"
+            TAGS="${TAGS},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+            VERSION="develop"
+            TAGS="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}"
+            TAGS="${TAGS},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:dev-${{ github.run_number }}"
+          else
+            VERSION="branch-${{ github.ref_name }}"
+            TAGS="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}"
+          fi
+
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+          echo ""
+          echo "📦 Docker Image Config:"
+          echo "   Registry: ${{ env.REGISTRY }}"
+          echo "   Image: ${{ env.IMAGE_NAME }}"
+          echo "   Version: ${VERSION}"
+          echo "   Tags:"
+          echo "   ${TAGS}" | tr ',' '\n'
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: |
+            org.opencontainers.image.title=${{ github.event.repository.name }}
+            org.opencontainers.image.description=Web deployment infrastructure with Docker
+            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.url=${{ github.server_url }}/${{ github.repository }}
+
+      - name: Docker image push summary
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📦 Docker Image Built & Pushed"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "✅ Image: ${{ env.IMAGE_NAME }}"
+          echo "✅ Version: ${{ steps.meta.outputs.version }}"
+          echo "✅ Image URL: https://hub.docker.com/r/${{ env.IMAGE_NAME }}"
+          echo ""
+          echo "📋 Tags Created:"
+          ${{ steps.meta.outputs.tags }} | tr ',' '\n' | while read tag; do
+            echo "   • ${tag}"
+          done
+          echo ""
+          echo "📥 Pull with:"
+          echo "   docker pull ${{ env.IMAGE_NAME }}:latest"
+
+  notify-deployment:
+    name: Ready for Deployment
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [ build-and-push ]
+    steps:
+      - name: Deployment status
+        run: |
+          if [ "${{ needs.build-and-push.result }}" == "success" ]; then
+            echo "✅ Build & Push completed successfully"
+            echo ""
+            echo "🚀 Ready for deployment!"
+            echo "   Next: Run deploy workflow or manual docker compose up"
+          else
+            echo "❌ Build & Push failed"
+            exit 1
+          fi

@@ -1,0 +1,141 @@
+name: Security Scanning
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+
+jobs:
+  trivy-filesystem:
+    name: Trivy Filesystem Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+
+      - name: Upload Trivy results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Run Trivy with table output
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+
+  trivy-config:
+    name: Trivy Config Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy config scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: '.'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'
+
+  dockerfile-lint:
+    name: Dockerfile Security Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check Dockerfile best practices
+        run: |
+          echo "🔍 Scanning Dockerfile for security issues..."
+
+          if [ -f "Dockerfile" ]; then
+            # Verificar USER instruction (no root)
+            if grep -q "^USER root" Dockerfile || ! grep -q "^USER " Dockerfile; then
+              echo "⚠️  Warning: Consider adding non-root USER to Dockerfile"
+            fi
+
+            # Verificar FROM base
+            if grep -q "FROM alpine" Dockerfile; then
+              echo "✅ Alpine base image detected (good for size)"
+            fi
+
+            # Verificar HEALTHCHECK
+            if ! grep -q "HEALTHCHECK" Dockerfile; then
+              echo "ℹ️  Consider adding HEALTHCHECK instruction"
+            fi
+
+            echo "✅ Dockerfile checks complete"
+          fi
+
+  docker-compose-security:
+    name: Docker Compose Security Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check docker-compose.yml security
+        run: |
+          echo "🔍 Scanning docker-compose.yml for security issues..."
+
+          if [ -f "docker-compose.yml" ]; then
+            # Verificar que no hay hardcoded credentials
+            if grep -i "password\|secret\|api_key\|token" docker-compose.yml | grep -v "\$\{" > /dev/null; then
+              echo "❌ WARNING: Possible hardcoded credentials detected"
+              grep -n -i "password\|secret\|api_key\|token" docker-compose.yml | grep -v "\$\{"
+              exit 1
+            fi
+
+            # Verificar que usa variables de entorno
+            if grep -q "\$\{" docker-compose.yml; then
+              echo "✅ Environment variables detected (good for secrets)"
+            fi
+
+            # Verificar networks
+            if grep -q "networks:" docker-compose.yml; then
+              echo "✅ Custom networks configured (network segmentation)"
+            fi
+
+            # Verificar volumes
+            if grep -q "volumes:" docker-compose.yml; then
+              echo "✅ Persistent volumes configured"
+            fi
+
+            echo "✅ docker-compose.yml security checks passed"
+          fi
+
+  summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [ trivy-filesystem, trivy-config, dockerfile-lint, docker-compose-security ]
+    steps:
+      - name: Report security scan results
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🛡️  Security Scan Summary"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "✅ Trivy filesystem scan complete"
+          echo "✅ Trivy config scan complete"
+          echo "✅ Dockerfile security checks complete"
+          echo "✅ Docker Compose security checks complete"
+          echo ""
+          echo "📋 Results available in GitHub Security tab"
+          echo "   (if CRITICAL/HIGH issues found)"

@@ -1,6 +1,39 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# CONFIGURACIÓN DE PROMETHEUS (v2.0)
+# ═══════════════════════════════════════════════════════════════════════════════
+# Scrape interval: Cada cuánto tiempo recolecta métricas (15s es estándar para lab)
+# Evaluation interval: Cada cuánto evalúa reglas de alertas (15s)
+#
+
 global:
   scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'lab-miguel'
+    environment: 'production'
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SCRAPE CONFIGS: Define qué targets monitorizar y con qué frecuencia
+# ═══════════════════════════════════════════════════════════════════════════════
+
 scrape_configs:
-  - job_name: 'node-exporter'
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Prometheus auto-monitoring: Recolecta métricas de sí mismo
+  # IMPORTANTE: Sin esto, no puedes ver health de Prometheus en los dashboards
+  # Métricas principales: up, scrape_duration_seconds, scrape_samples_post_metric_relabeling
+  # ─────────────────────────────────────────────────────────────────────────────
+  - job_name: 'prometheus'
     static_configs:
-      - targets: ['node-exporter:9100']
+      - targets: ['localhost:9090']
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Node Exporter: Métricas del sistema host (CPU, RAM, Disco, Red)
+  # Scrape interval 30s: Más frecuente que global para datos frescos del HW
+  # ─────────────────────────────────────────────────────────────────────────────
+  - job_name: 'node-exporter'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['node-exporter-telemetry:9100']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance

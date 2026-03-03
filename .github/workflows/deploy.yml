@@ -1,0 +1,182 @@
+name: Deploy to Server (Optional)
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+env:
+  DEPLOY_PATH: ~/apps/despliegue-servidor
+
+jobs:
+  deploy:
+    name: SSH Deploy to Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate deployment credentials
+        run: |
+          echo "🔍 Validating SSH credentials..."
+
+          if [ -z "${{ secrets.SERVER_HOST }}" ]; then
+            echo "⚠️  SERVER_HOST not configured - skipping deployment"
+            exit 78  # Skip code
+          fi
+
+          if [ -z "${{ secrets.SERVER_USER }}" ]; then
+            echo "⚠️  SERVER_USER not configured - skipping deployment"
+            exit 78
+          fi
+
+          if [ -z "${{ secrets.SERVER_SSH_KEY }}" ]; then
+            echo "⚠️  SERVER_SSH_KEY not configured - skipping deployment"
+            exit 78
+          fi
+
+          echo "✅ SSH credentials configured"
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_SSH_PORT || '22' }}
+          script_stop: true
+          debug: false
+          script: |
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "🚀 Deployment Starting..."
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+            # Variables
+            DEPLOY_DIR="${{ env.DEPLOY_PATH }}"
+
+            # 1. Validar estructura
+            echo ""
+            echo "📁 Validating deployment directory..."
+            if [ ! -d "$DEPLOY_DIR" ]; then
+              echo "❌ Error: $DEPLOY_DIR does not exist"
+              echo "   Please create with: mkdir -p $DEPLOY_DIR"
+              exit 1
+            fi
+
+            # 2. Cambiar directorio
+            cd "$DEPLOY_DIR" || exit 1
+            echo "✅ Working in: $(pwd)"
+
+            # 3. Git pull
+            echo ""
+            echo "📥 Pulling latest changes..."
+            if git rev-parse --git-dir > /dev/null 2>&1; then
+              git fetch origin main 2>&1 || echo "⚠️  Git fetch warning (may be first deployment)"
+              git reset --hard origin/main 2>&1 || echo "⚠️  First time setup"
+              COMMIT=$(git log -1 --pretty=format:"%h" 2>/dev/null || echo "initial")
+              echo "✅ Current commit: $COMMIT"
+            else
+              echo "⚠️  Not a git repository (first deployment)"
+            fi
+
+            # 4. Cargar .env
+            echo ""
+            echo "⚙️  Loading environment..."
+            if [ ! -f ".env" ]; then
+              if [ -f ".env.example" ]; then
+                cp .env.example .env
+                echo "📝 Created .env from .env.example"
+                echo "⚠️  UPDATE .env with your configuration!"
+              else
+                echo "❌ Error: .env not found and .env.example not available"
+                exit 1
+              fi
+            else
+              echo "✅ .env loaded"
+            fi
+
+            # 5. Docker compose pull
+            echo ""
+            echo "📦 Pulling latest images..."
+            docker compose pull --quiet || {
+              echo "⚠️  Docker pull warning (images may be up to date)"
+            }
+            echo "✅ Images updated"
+
+            # 6. Crear redes si no existen
+            echo ""
+            echo "🌐 Ensuring networks exist..."
+            docker network create net_proxy --driver bridge 2>/dev/null || true
+            docker network create net_monitor --driver bridge 2>/dev/null || true
+            echo "✅ Networks ready"
+
+            # 7. Levantar servicios
+            echo ""
+            echo "🚀 Starting services..."
+            docker compose up -d --remove-orphans || {
+              echo "❌ Error: docker compose up failed"
+              docker compose logs
+              exit 1
+            }
+            echo "✅ Services started"
+
+            # 8. Verificación de estado
+            echo ""
+            echo "✅ Verification:"
+            docker compose ps | sed 's/^/   /'
+
+            # 9. Resumen
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "✅ DEPLOYMENT SUCCESSFUL"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo ""
+            echo "📋 Next steps:"
+            echo "   1. SSH into server: ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}"
+            echo "   2. Check logs: docker compose logs -f"
+            echo "   3. Wait for SSL (Letsencrypt): 30-60 seconds"
+            echo "   4. Test HTTPS: curl https://tu-dominio.com"
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Deployment completed successfully"
+          else
+            echo "❌ Deployment failed - check logs above"
+          fi
+
+  notification:
+    name: Deployment Status
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [ deploy ]
+    steps:
+      - name: Report deployment status
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📊 Deployment Pipeline Summary"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+          if [ "${{ needs.deploy.result }}" == "success" ]; then
+            echo "🎉 Deployment SUCCESSFUL"
+            echo ""
+            echo "Services are now running on:"
+            echo "  • Grafana: https://your-domain"
+            echo "  • Portainer: https://your-domain:9000"
+            echo "  • Prometheus: https://your-domain:9090"
+          elif [ "${{ needs.deploy.result }}" == "skipped" ]; then
+            echo "⏭️  Deployment SKIPPED"
+            echo ""
+            echo "To enable automatic deployment, configure:"
+            echo "  • SERVER_HOST"
+            echo "  • SERVER_USER"
+            echo "  • SERVER_SSH_KEY"
+            echo ""
+            echo "See: Settings → Secrets and Variables → Actions"
+          else
+            echo "❌ Deployment FAILED"
+            echo ""
+            echo "Check logs above for details"
+          fi
