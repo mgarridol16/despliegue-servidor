@@ -54,7 +54,7 @@ echo ""
 echo "El dominio determina dónde será accesible tu plataforma."
 echo ""
 echo "OPCIONES PREDEFINIDAS:"
-echo "  1) Servidor escuela (www.servidorgp.somosdelprieto.com)"
+echo "  1) Servidor escuela (<tu-nombre>.servidorgp.somosdelprieto.com)"
 echo "  2) Localhost para desarrollo local"
 echo "  3) IP directa del servidor"
 echo "  4) Dominio personalizado (ingresa el tuyo)"
@@ -64,7 +64,7 @@ read -p "Elige opción (1-4): " DOMAIN_CHOICE
 
 case $DOMAIN_CHOICE in
   1)
-    MAIN_DOMAIN="${USERNAME}.www.servidorgp.somosdelprieto.com"
+    MAIN_DOMAIN="${USERNAME}.servidorgp.somosdelprieto.com"
     echo "✅ Dominio: $MAIN_DOMAIN"
     ;;
   2)
