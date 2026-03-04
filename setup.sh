@@ -104,17 +104,19 @@ echo ""
 echo "📝 PASO 3: Email para Let's Encrypt (renovación de certificados)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "Let's Encrypt te notificará cuando los certificados estén próximos a vencer."
+echo "Let's Encrypt usará este email para notificaciones de renovación."
+echo "Si no especificas uno, usaremos: noreply@somosdelprieto.com"
 echo ""
 
-read -p "Email (ej: tu-email@institucion.es): " ACME_EMAIL
+read -p "Email (opcional, presiona Enter para usar default): " ACME_EMAIL
 
 if [ -z "$ACME_EMAIL" ]; then
-    ACME_EMAIL="admin@example.com"
-    echo "⚠️  Email no especificado. Usando default: $ACME_EMAIL"
+    ACME_EMAIL="noreply@somosdelprieto.com"
+    echo "✅ Usando email por defecto: $ACME_EMAIL"
+else
+    echo "✅ Email: $ACME_EMAIL"
 fi
 
-echo "✅ Email: $ACME_EMAIL"
 echo ""
 
 # ─────────────────────────────────────────────────────────────────────────────
