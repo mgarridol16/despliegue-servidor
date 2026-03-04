@@ -64,7 +64,6 @@ services:
       - LETSENCRYPT_EMAIL=${ACME_EMAIL}
     networks:
       - net_proxy
-    restart: unless-stopped
 
   # ═══════════════════════════════════════════════════════════════════════════
   # MONITORIZACIÓN: PROMETHEUS + EXPORTERS
@@ -84,7 +83,6 @@ services:
     networks:
       - net_monitor
       - net_proxy
-    restart: unless-stopped
 
   # Recolector de métricas del host
   node-exporter:
@@ -101,12 +99,12 @@ services:
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
     networks:
       - net_monitor
-    restart: unless-stopped
 
   # Monitorización de nginx-proxy (opcional pero recomendado)
   nginx-exporter:
     image: nginx/nginx-prometheus-exporter:latest
     container_name: nginx-exporter
+    restart: unless-stopped
     command:
       - '-nginx.scrape-uri=http://nginx-proxy:8080/stub_status'
     networks:
@@ -130,6 +128,8 @@ services:
 
   # Grafana UI
   grafana:
+    image: grafana/grafana:${GRAFANA_VERSION}
+    container_name: grafana
     restart: unless-stopped
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin123
@@ -138,9 +138,7 @@ services:
       - VIRTUAL_HOST=grafana.${MAIN_DOMAIN}
       - VIRTUAL_PORT=3000
       - LETSENCRYPT_HOST=grafana.${MAIN_DOMAIN}
-      - LETSENCRYPT_EMAIL=${ACME_EMAIL
-      - VIRTUAL_PORT=3000
-      - LETSENCRYPT_HOST=grafana.${MAIN_DOMAIN}
+      - LETSENCRYPT_EMAIL=${ACME_EMAIL}
     volumes:
       - grafana_data:/var/lib/grafana
     depends_on:
@@ -149,7 +147,6 @@ services:
     networks:
       - net_monitor
       - net_proxy
-    restart: unless-stopped
 
 volumes:
   portainer_data:
