@@ -25,7 +25,6 @@ services:
     networks:
       - net_proxy
       - net_monitor
-    restart: unless-stopped
 
   # ─────────────────────────────────────────────────────────────────────────
   # SSL AUTOMÁTICO (Let's Encrypt)
@@ -46,7 +45,6 @@ services:
       - html:/usr/share/nginx/html
     networks:
       - net_proxy
-    restart: unless-stopped
 
   # ═══════════════════════════════════════════════════════════════════════════
   # GESTIÓN DE CONTENEDORES
