@@ -151,12 +151,76 @@ Si necesitas control granular, puedes editar manualmente:
 nano nginx/proxy-conf.d/custom.conf
 
 # Editar configuración Nginx
-# Luego: docker exec nginx-proxy-core nginx -s reload
+# Luego: docker exec nginx-proxy nginx -s reload
 ```
 
 ---
 
-## 📋 5. Verificación y Testing
+## 📦 5. Despliegue de Aplicaciones de Usuarios
+
+Los usuarios pueden desplegar sus propias aplicaciones siguiendo este patrón:
+
+### Paso 1: Estructura de archivos
+
+```
+mi-aplicacion/
+├── docker-compose.yml
+├── Dockerfile (o code fuente)
+└── ...
+```
+
+### Paso 2: docker-compose.yml de la aplicación
+
+```yaml
+services:
+  web:
+    # Tu imagen
+    image: mi-app:latest
+    # O build from Dockerfile:
+    # build: .
+
+    environment:
+      # IMPORTANTE: Estos valores hacen que nginxproxy + acme-companion
+      # detecten automáticamente tu app y generen SSL
+      - VIRTUAL_HOST=mi-app.${MAIN_DOMAIN}
+      - VIRTUAL_PORT=80
+      - LETSENCRYPT_HOST=mi-app.${MAIN_DOMAIN}
+      - LETSENCRYPT_EMAIL=${ACME_EMAIL}
+
+    networks:
+      # Red externa que criamos en setup
+      - net_proxy
+
+# Declarar que usa una red externa
+networks:
+  net_proxy:
+    external: true
+```
+
+### Paso 3: Subir y desplegar
+
+```bash
+# Desde tu máquina (desarrollo)
+scp -r ./mi-aplicacion usuario@servidor:~/apps/
+
+# En el servidor
+ssh usuario@servidor
+cd ~/apps/mi-aplicacion
+docker compose up -d
+
+# ¡Listo! Tu app estará en https://mi-app.tu-dominio.com
+```
+
+### Resultado automático
+
+- ✅ nginxproxy detecta `VIRTUAL_HOST`
+- ✅ acme-companion genera certificado SSL
+- ✅ App accesible en HTTPS sin intervención manual
+- ✅ Subdominio creado automáticamente
+
+---
+
+## 📋 6. Verificación y Testing
 
 ### Verificar instalación básica
 
@@ -168,10 +232,10 @@ docker compose ps
 docker compose logs -f
 
 # Específicos
-docker logs nginx-proxy-core    # Proxy
-docker logs acme-companion-ssl  # SSL
-docker logs prometheus-core     # Métricas
-docker logs grafana-ui          # Dashboards
+docker logs nginx-proxy    # Proxy
+docker logs acme-companion # SSL
+docker logs prometheus     # Métricas
+docker logs grafana        # Dashboards
 ```
 
 ### Test HTTPS funcionando
@@ -197,7 +261,7 @@ openssl s_client -connect tu-dominio:443
 
 ---
 
-## 🔄 6. Tareas Comunes
+## 🔄 7. Tareas Comunes
 
 ### Ver logs de una app
 
@@ -216,7 +280,7 @@ docker compose up -d
 
 ```bash
 docker compose down -v  # -v borra volúmenes
-docker volume rm vols_*
+docker volume rm despliegue-servidor_*
 bash setup.sh
 docker compose up -d
 ```
@@ -232,7 +296,7 @@ nano .env
 docker compose restart nginx-proxy acme-companion
 
 # 3. Esperar certificado (60 seg)
-docker logs acme-companion-ssl
+docker logs acme-companion
 ```
 
 ---
@@ -256,7 +320,7 @@ docker network create net_monitor --driver bridge
 ### "HTTPS devuelve ERROR de certificado"
 ```bash
 # Esperar a que acme-companion genere certificado (60 seg)
-docker logs acme-companion-ssl | tail -30
+docker logs acme-companion | tail -30
 
 # Mientras tanto, usar -k para ignorar cert no válido:
 curl -k https://tu-dominio

@@ -218,8 +218,37 @@ FECHA: $(date)
 EOF
 
 # ─────────────────────────────────────────────────────────────────────────────
-# RESUMEN FINAL
+# STEP 8: CREAR REDES DOCKER (Si Docker está disponible)
 # ─────────────────────────────────────────────────────────────────────────────
+
+echo ""
+echo "🌐 PASO 8: Creando redes Docker"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Verificar si Docker está disponible
+if ! command -v docker &> /dev/null; then
+    echo "⚠️  Docker no está instalado. Saltando creación de redes."
+    echo "    Ejecuta manualmente después:"
+    echo "    docker network create net_proxy --driver bridge"
+    echo "    docker network create net_monitor --driver bridge"
+else
+    REDES=("net_proxy" "net_monitor")
+
+    for RED in "${REDES[@]}"; do
+        if docker network ls --filter "name=^${RED}$" --format "{{.Name}}" | grep -q "^${RED}$"; then
+            echo "✅ Red '$RED' ya existe"
+        else
+            echo "➕ Creando red: $RED"
+            docker network create "$RED" --driver bridge
+            if [ $? -eq 0 ]; then
+                echo "✅ Red '$RED' creada correctamente"
+            else
+                echo "⚠️  Error al crear red '$RED' (puede requerirse sudo)"
+            fi
+        fi
+    done
+fi
 
 echo ""
 echo "╔═══════════════════════════════════════════════════════════════════════════╗"
@@ -238,8 +267,6 @@ echo "📖 PRÓXIMOS PASOS:"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "1️⃣  DESARROLLO LOCAL:"
-echo "    docker network create net_proxy --driver bridge"
-echo "    docker network create net_monitor --driver bridge"
 echo "    docker compose up -d"
 echo ""
 echo "2️⃣  DESPLIEGUE EN SERVIDOR:"

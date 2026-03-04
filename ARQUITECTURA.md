@@ -36,9 +36,9 @@
         │  CAPA 1: PROXY INVERSO & SSL (nginxproxy + acme)       │
         │                                                         │
         │  ┌──────────────────────────────────────────────────┐  │
-        │  │ nginx-proxy-core:80/443 (Auto-config)           │  │
+        │  │ nginx-proxy:80/443 (Auto-config)                │  │
         │  │ + acme-companion (Let's Encrypt automático)      │  │
-        │  │ + Redes: net_proxy, net_monitor                 │  │
+        │  │ + Redes: net_proxy, net_monitor (attachable)     │  │
         │  └──────────────────────────────────────────────────┘  │
         └──────────────┬──────────────────────────────────────────┘
                        │
@@ -517,25 +517,27 @@ docker compose up -d
 # Verificar contenedores
 docker compose ps
 # Esperado:
-# nginx-proxy-core      UP (healthy)
-# acme-companion-ssl    UP
-# prometheus-core       UP
-# node-exporter...      UP
-# grafana-ui            UP
-# portainer-mgmt        UP
+# nginx-proxy          UP (healthy)
+# acme-companion       UP
+# prometheus           UP
+# node-exporter        UP
+# nginx-exporter       UP
+# fix-grafana-perms    Exited (es un init container, normal)
+# grafana              UP
+# portainer            UP
 
 # Ver logs de acme-companion (certificados)
-docker logs acme-companion-ssl | tail -20
+docker logs acme-companion | tail -20
 ```
 
 ### PASO 4: Verificar Let's Encrypt
 
 ```bash
 # Comprobar que acme-companion genera certificados
-docker volume inspect vols_certs
+docker volume inspect despliegue-servidor_certs
 # Debería mostrar mount path
 
-docker exec acme-companion-ssl ls /etc/acme.sh/
+docker exec acme-companion ls /etc/acme.sh/
 # Ver dominios registrados:
 # miguel.www.servidorgp.somosdelprieto.com/
 # portainer.www.servidorgp.somosdelprieto.com/
@@ -554,7 +556,7 @@ cd ~/apps/app-profesor
 docker compose up -d
 
 # Ver si nginx-proxy detectó:
-docker logs nginx-proxy-core | grep "profesor\.www"
+docker logs nginx-proxy | grep "profesor\.www"
 # Debería ver: generando vhost, pidiendo certificado, etc
 
 # Esperar 30 seg y verificar acceso:
@@ -629,7 +631,7 @@ curl "http://prometheus.www.servidorgp.somosdelprieto.com:9090/api/v1/query?quer
 # Contraseña: la de ${GRAFANA_ADMIN_PASSWORD}
 
 # Añadir datasource Prometheus:
-# URL: http://prometheus-core:9090
+# URL: http://prometheus:9090
 # Verificar: conexión exitosa
 ```
 

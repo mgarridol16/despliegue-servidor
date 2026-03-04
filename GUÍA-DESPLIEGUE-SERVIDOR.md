@@ -302,9 +302,9 @@ docker compose ps
 
 # Esperado:
 # NAME                     STATUS              PORTS
-# nginx-proxy-core         Up X seconds        0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp
-# acme-companion-ssl       Up X seconds
-# prometheus-core          Up X seconds
+# nginx-proxy         Up X seconds        0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp
+# acme-companion      Up X seconds
+# prometheus          Up X seconds
 # node-exporter-telemetry  Up X seconds
 # grafana-ui               Up X seconds
 # portainer-mgmt           Up X seconds

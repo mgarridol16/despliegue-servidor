@@ -43,16 +43,16 @@ docker compose up -d
 
 ```bash
 docker compose ps
-# Debería ver 6 contenedores en estado "Up"
+# Debería ver 7 contenedores en estado "Up"
 
-docker logs nginx-proxy-core | tail -20
-docker logs prometheus-core | tail -20
+docker logs nginx-proxy | tail -20
+docker logs prometheus | tail -20
 ```
 
 ### Paso 5: Acceder a los servicios
 
 ```
-Grafana:    http://localhost:3000/
+Grafana:    http://localhost:3000/ (usuario: admin, contraseña: admin123)
 Portainer:  http://localhost:9000/
 Prometheus: http://localhost:9090/
 ```
@@ -103,8 +103,8 @@ docker compose logs -f
 ### Paso 5: Esperar certificados SSL
 
 ```bash
-# Comprobarcaja logs de acme-companion (30-60 segundos)
-docker logs acme-companion-ssl | tail -50
+# Comprobar logs de acme-companion (30-60 segundos)
+docker logs acme-companion | tail -50
 
 # Esperar a ver:
 # "Creating SSL certificate for: juanma.www.servidorgp..."
@@ -239,19 +239,21 @@ Después de ejecutar `setup.sh` y `docker compose up -d`:
 ```bash
 # 1. ¿Todos los servicios levantados?
 docker compose ps
-[ ] nginx-proxy-core → Up
-[ ] acme-companion-ssl → Up
-[ ] prometheus-core → Up
-[ ] node-exporter-telemetry → Up
-[ ] grafana-ui → Up
-[ ] portainer-mgmt → Up
+[ ] nginx-proxy → Up
+[ ] acme-companion → Up
+[ ] prometheus → Up
+[ ] node-exporter → Up
+[ ] nginx-exporter → Up
+[ ] fix-grafana-perms → Exited (esto es normal, es un init container)
+[ ] grafana → Up
+[ ] portainer → Up
 
 # 2. ¿Se generaron certificados?
-docker volume inspect vols_certs
-docker logs acme-companion-ssl | grep "Certificate"
+docker volume inspect despliegue-servidor_certs
+docker logs acme-companion | grep "Certificate"
 
 # 3. ¿Nginx detectó plataforma?
-docker logs nginx-proxy-core | grep "portainer\|prometheus\|grafana"
+docker logs nginx-proxy | grep "portainer\|prometheus\|grafana"
 
 # 4. ¿Prometheus tiene métricas?
 curl "http://localhost:9090/api/v1/query?query=up"
@@ -276,7 +278,7 @@ docker compose up -d
 
 ### Problema: "HTTPS devuelve ERR_CERT_NOT_YET_VALID"
 
-**Significa**: Let's Encrypt aún está generando certificado (normal primeras 60 seg)
+**Significa**: ACME aún está generando certificado (normal primeras 60 seg)
 
 **Solución**:
 ```bash
@@ -284,7 +286,7 @@ docker compose up -d
 sleep 120
 
 # Ver logs
-docker logs acme-companion-ssl | tail -30
+docker logs acme-companion | tail -30
 
 # Reintentar
 curl -k https://tu-dominio   # Con -k para ignorar cert no válido

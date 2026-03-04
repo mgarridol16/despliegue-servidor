@@ -1,10 +1,17 @@
 networks:
-  frontend:
-    name: frontend
-  backend:
-    name: backend
+  net_proxy:
+    name: net_proxy
+    driver: bridge
+    attachable: true
+  net_monitor:
+    name: net_monitor
+    driver: bridge
+    internal: false
 
 services:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # PROXY INVERSO + SSL AUTOMÁTICO
+  # ═══════════════════════════════════════════════════════════════════════════
   nginx-proxy:
     image: nginxproxy/nginx-proxy:${NGINX_PROXY_VERSION}
     container_name: nginx-proxy
@@ -15,37 +22,42 @@ services:
       - "443:443"
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
-      - certs:/etc/nginx/certs
+      - certs:/etc/nginx/certs:ro
       - vhost:/etc/nginx/vhost.d
       - html:/usr/share/nginx/html
     networks:
-      - frontend
-      - backend
+      - net_proxy
+      - net_monitor
     restart: always
 
-  # acme-companion:
-  #   image: nginxproxy/acme-companion:latest
-  #   container_name: nginx-proxy-acme
-  #   environment:
-  #     - DEFAULT_EMAIL=${ACME_EMAIL}
-  #     - NGINX_PROXY_CONTAINER=nginx-proxy
-  #   volumes:
-  #     - /var/run/docker.sock:/var/run/docker.sock:ro
-  #     - certs:/etc/nginx/certs
-  #     - vhost:/etc/nginx/vhost.d
-  #     - html:/usr/share/nginx/html
-  #     - acme:/etc/acme.sh
-  #   depends_on:
-  #     - nginx-proxy
-  #   networks:
-  #     - frontend
-  #   restart: always
+  # ─────────────────────────────────────────────────────────────────────────
+  # SSL AUTOMÁTICO (Let's Encrypt)
+  # ─────────────────────────────────────────────────────────────────────────
+  acme-companion:
+    image: nginxproxy/acme-companion:latest
+    container_name: acme-companion
+    environment:
+      - DEFAULT_EMAIL=${ACME_EMAIL}
+      - NGINX_PROXY_CONTAINER=nginx-proxy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - certs:/etc/nginx/certs
+      - vhost:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
+      - acme:/etc/acme.sh
+    depends_on:
+      - nginx-proxy
+    networks:
+      - net_proxy
+    restart: always
 
+  # ═══════════════════════════════════════════════════════════════════════════
+  # GESTIÓN DE CONTENEDORES
+  # ═══════════════════════════════════════════════════════════════════════════
   portainer:
     image: portainer/portainer-ce:${PORTAINER_VERSION}
     container_name: portainer
     command: -H unix:///var/run/docker.sock
-    # ports: - "9000:9000" # Comentado porque entramos vía Proxy
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer_data:/data
@@ -53,25 +65,31 @@ services:
       - VIRTUAL_HOST=portainer.${MAIN_DOMAIN}
       - VIRTUAL_PORT=9000
       - LETSENCRYPT_HOST=portainer.${MAIN_DOMAIN}
+      - LETSENCRYPT_EMAIL=${ACME_EMAIL}
     networks:
-      - frontend
+      - net_proxy
     restart: unless-stopped
 
+  # ═══════════════════════════════════════════════════════════════════════════
+  # MONITORIZACIÓN: PROMETHEUS + EXPORTERS
+  # ═══════════════════════════════════════════════════════════════════════════
   prometheus:
     image: prom/prometheus:${PROMETHEUS_VERSION}
     container_name: prometheus
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     environment:
       - VIRTUAL_HOST=prometheus.${MAIN_DOMAIN}
       - VIRTUAL_PORT=9090
       - LETSENCRYPT_HOST=prometheus.${MAIN_DOMAIN}
+      - LETSENCRYPT_EMAIL=${ACME_EMAIL}
     networks:
-      - backend
-      - frontend
+      - net_monitor
+      - net_proxy
     restart: unless-stopped
 
+  # Recolector de métricas del host
   node-exporter:
     image: prom/node-exporter:latest
     container_name: node-exporter
@@ -85,21 +103,54 @@ services:
       - '--path.sysfs=/host/sys'
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
     networks:
-      - backend
+      - net_monitor
     restart: unless-stopped
 
+  # Monitorización de nginx-proxy (opcional pero recomendado)
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:latest
+    container_name: nginx-exporter
+    command:
+      - '-nginx.scrape-uri=http://nginx-proxy:8080/stub_status'
+    networks:
+      - net_monitor
+      - net_proxy
+    depends_on:
+      - nginx-proxy
+    restart: unless-stopped
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # GRAFANA: DASHBOARDS Y VISUALIZACIÓN
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Init container: Arregla permisos de Grafana antes de iniciar
+  fix-grafana-perms:
+    image: alpine:latest
+    container_name: fix-grafana-perms
+    command: chown -R 472:472 /var/lib/grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+    network_mode: none
+
+  # Grafana UI
   grafana:
     image: grafana/grafana:${GRAFANA_VERSION}
     container_name: grafana
-    volumes:
-      - grafana_data:/var/lib/grafana
     environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_SERVER_ROOT_URL=https://grafana.${MAIN_DOMAIN}
+      - GF_SERVER_DOMAIN=grafana.${MAIN_DOMAIN}
       - VIRTUAL_HOST=grafana.${MAIN_DOMAIN}
       - VIRTUAL_PORT=3000
       - LETSENCRYPT_HOST=grafana.${MAIN_DOMAIN}
+      - LETSENCRYPT_EMAIL=${ACME_EMAIL}
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      fix-grafana-perms:
+        condition: service_completed_successfully
     networks:
-      - frontend
-      - backend
+      - net_monitor
+      - net_proxy
     restart: unless-stopped
 
 volumes:
