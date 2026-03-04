@@ -112,7 +112,6 @@ services:
       - net_proxy
     depends_on:
       - nginx-proxy
-    restart: unless-stopped
 
   # ═══════════════════════════════════════════════════════════════════════════
   # GRAFANA: DASHBOARDS Y VISUALIZACIÓN
