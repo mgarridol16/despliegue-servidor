@@ -36,24 +36,27 @@ services:
   #   ACME_EMAIL: Tu email para renovaciones
   #   ACME_CA_URI: Production o Staging (para pruebas sin límite de rate-limit)
   #
-  acme-companion:
-    image: nginxproxy/acme-companion:latest
-    container_name: acme-companion-ssl
-    restart: always
-    depends_on:
-      - nginx-proxy
-    environment:
-      - DEFAULT_EMAIL=${ACME_EMAIL:-admin@example.com}
-      - ACME_CA_URI=${ACME_CA_URI:-https://acme-v02.api.letsencrypt.org/directory}
-      - NGINX_PROXY_CONTAINER=nginx-proxy-core
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - certs_vol:/etc/nginx/certs
-      - vhost_vol:/etc/nginx/vhost.d
-      - html_vol:/usr/share/nginx/html
-      - acme_vol:/etc/acme.sh
-    networks:
-      - net_proxy
+  # 📌 NOTA: acme-companion comentado. Usa self-signed de nginx-proxy (funciona en intranet)
+  #    Si despliegas en internet (dominio público válido), descomenta para automaizar Let's Encrypt
+  #
+  # acme-companion:
+  #   image: nginxproxy/acme-companion:latest
+  #   container_name: acme-companion-ssl
+  #   restart: always
+  #   depends_on:
+  #     - nginx-proxy
+  #   environment:
+  #     - DEFAULT_EMAIL=${ACME_EMAIL:-admin@example.com}
+  #     - ACME_CA_URI=${ACME_CA_URI:-https://acme-v02.api.letsencrypt.org/directory}
+  #     - NGINX_PROXY_CONTAINER=nginx-proxy-core
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+  #     - certs_vol:/etc/nginx/certs
+  #     - vhost_vol:/etc/nginx/vhost.d
+  #     - html_vol:/usr/share/nginx/html
+  #     - acme_vol:/etc/acme.sh
+  #   networks:
+  #     - net_proxy
 
   # ═══════════════════════════════════════════════════════════════════════════════
   # 👥 GESTOR DE CONTENEDORES (Portainer)
