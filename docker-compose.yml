@@ -1,107 +1,80 @@
+networks:
+  frontend:
+    name: frontend
+  backend:
+    name: backend
+
 services:
-  # ═══════════════════════════════════════════════════════════════════════════════
-  # 🔄 PROXY INVERSO AUTOMATIZADO (v2.0)
-  # ═══════════════════════════════════════════════════════════════════════════════
-  # nginx-proxy: Detección automática de apps vía VIRTUAL_HOST
-  # NO requiere editar default.conf para cada aplicación nueva
-  # Soporta: Let's Encrypt real, dominios locales, IPs, wildcards
-  #
   nginx-proxy:
-    image: nginxproxy/nginx-proxy:${PROXY_VERSION:-1.6}
-    container_name: nginx-proxy-core
-    restart: always
+    image: nginxproxy/nginx-proxy:${NGINX_PROXY_VERSION}
+    container_name: nginx-proxy
+    labels:
+      - com.github.nginx-proxy.nginx=true
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
-      - certs_vol:/etc/nginx/certs
-      - vhost_vol:/etc/nginx/vhost.d
-      - html_vol:/usr/share/nginx/html
-      - ./nginx/proxy-conf.d:/etc/nginx/conf.d/custom:ro
+      - certs:/etc/nginx/certs:ro
+      - vhost:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
     networks:
-      - net_proxy
-      - net_monitor
-    labels:
-      - "com.github.jrcs.letsencrypt_nginx_proxy.enabled=true"
+      - frontend
+      - backend
+    restart: always
 
-  # ═══════════════════════════════════════════════════════════════════════════════
-  # 🔐 GESTOR DE CERTIFICADOS (Let's Encrypt ACME v2 - FLEXIBLE, SIN ACOPLAMIENTO)
-  # ═══════════════════════════════════════════════════════════════════════════════
-  # acme-companion: Automatiza certificados con Let's Encrypt real
-  # - Compatible con: .duckdns.org, dominios locales, TLDs reales, wildcards
-  # - Renovación automática 30 días antes de expiración
-  # - NO acoplado a DuckDNS o proveedor específico (como la v1.0)
-  # VARIABLES PERSONALIZABLES:
-  #   ACME_EMAIL: Tu email para renovaciones
-  #   ACME_CA_URI: Production o Staging (para pruebas sin límite de rate-limit)
-  #
   acme-companion:
     image: nginxproxy/acme-companion:latest
-    container_name: acme-companion-ssl
-    restart: always
-    depends_on:
-      - nginx-proxy
+    container_name: nginx-proxy-acme
     environment:
-      - DEFAULT_EMAIL=${ACME_EMAIL:-noreply@somosdelprieto.com}
-      - ACME_CA_URI=${ACME_CA_URI:-https://acme-staging-v02.api.letsencrypt.org/directory}
-      - NGINX_PROXY_CONTAINER=nginx-proxy-core
+      - DEFAULT_EMAIL=${ACME_EMAIL}
+      - NGINX_PROXY_CONTAINER=nginx-proxy
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - certs_vol:/etc/nginx/certs
-      - vhost_vol:/etc/nginx/vhost.d
-      - html_vol:/usr/share/nginx/html
-      - acme_vol:/etc/acme.sh
+      - certs:/etc/nginx/certs
+      - vhost:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
+      - acme:/etc/acme.sh
+    depends_on:
+      - nginx-proxy
     networks:
-      - net_proxy
-
-  # ═══════════════════════════════════════════════════════════════════════════════
-  # 👥 GESTOR DE CONTENEDORES (Portainer)
-  # ═══════════════════════════════════════════════════════════════════════════════
-  portainer:
-    image: portainer/portainer-ce:${PORTAINER_VERSION:-latest}
-    container_name: portainer-mgmt
-    command: -H unix:///var/run/docker.sock
+      - frontend
     restart: always
+
+  portainer:
+    image: portainer/portainer-ce:${PORTAINER_VERSION}
+    container_name: portainer
+    command: -H unix:///var/run/docker.sock
+    # ports: - "9000:9000" # Comentado porque entramos vía Proxy
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - portainer_vol:/data
+      - portainer_data:/data
     environment:
-      - VIRTUAL_HOST=portainer.${MAIN_DOMAIN:-localhost}
+      - VIRTUAL_HOST=portainer.${MAIN_DOMAIN}
       - VIRTUAL_PORT=9000
-      - LETSENCRYPT_HOST=portainer.${MAIN_DOMAIN:-localhost}
+      - LETSENCRYPT_HOST=portainer.${MAIN_DOMAIN}
     networks:
-      - net_proxy
+      - frontend
+    restart: unless-stopped
 
-  # ═══════════════════════════════════════════════════════════════════════════════
-  # 📊 RECOLECCIÓN DE MÉTRICAS (Prometheus)
-  # ═══════════════════════════════════════════════════════════════════════════════
   prometheus:
-    image: prom/prometheus:${PROMETHEUS_VERSION:-latest}
-    container_name: prometheus-core
-    restart: unless-stopped
-    user: "0:0"
+    image: prom/prometheus:${PROMETHEUS_VERSION}
+    container_name: prometheus
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus_vol:/prometheus
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
     environment:
-      - VIRTUAL_HOST=prometheus.${MAIN_DOMAIN:-localhost}
+      - VIRTUAL_HOST=prometheus.${MAIN_DOMAIN}
       - VIRTUAL_PORT=9090
-      - LETSENCRYPT_HOST=prometheus.${MAIN_DOMAIN:-localhost}
+      - LETSENCRYPT_HOST=prometheus.${MAIN_DOMAIN}
     networks:
-      - net_proxy
-      - net_monitor
-
-  # ═══════════════════════════════════════════════════════════════════════════════
-  # 📈 AGENTE DE TELEMETRÍA DEL HOST (Node Exporter)
-  # ═══════════════════════════════════════════════════════════════════════════════
-  # Extrae métricas de CPU, RAM, Disco, Red directamente del kernel del host
-  # PERMISO: Requiere acceso RO a /proc, /sys del host (contenedor privilegiado mínimo)
-  #
-  node-exporter:
-    image: prom/node-exporter:${NODE_EXPORTER_VERSION:-latest}
-    container_name: node-exporter-telemetry
+      - backend
+      - frontend
     restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
@@ -112,76 +85,28 @@ services:
       - '--path.sysfs=/host/sys'
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
     networks:
-      - net_monitor
-
-  # ═══════════════════════════════════════════════════════════════════════════════
-  # 📉 VISUALIZACIÓN Y DASHBOARDS (Grafana)
-  # ═══════════════════════════════════════════════════════════════════════════════
-  grafana:
-    image: grafana/grafana:${GRAFANA_VERSION:-latest}
-    container_name: grafana-ui
+      - backend
     restart: unless-stopped
-    environment:
-      - VIRTUAL_HOST=grafana.${MAIN_DOMAIN:-localhost}
-      - VIRTUAL_PORT=3000
-      - LETSENCRYPT_HOST=grafana.${MAIN_DOMAIN:-localhost}
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+
+  grafana:
+    image: grafana/grafana:${GRAFANA_VERSION}
+    container_name: grafana
     volumes:
-      - grafana_vol:/var/lib/grafana
+      - grafana_data:/var/lib/grafana
+    environment:
+      - VIRTUAL_HOST=grafana.${MAIN_DOMAIN}
+      - VIRTUAL_PORT=3000
+      - LETSENCRYPT_HOST=grafana.${MAIN_DOMAIN}
     networks:
-      - net_proxy
-      - net_monitor
+      - frontend
+      - backend
+    restart: unless-stopped
 
-# ════════════════════════════════════════════════════════════════════════════════
-# REDES VIRTUALES (Segmentación de Tráfico)
-# ════════════════════════════════════════════════════════════════════════════════
-# net_proxy: Red externa (DMZ). Conectan aquí:
-#   - nginx-proxy (gateway público)
-#   - Apps desplegadas por usuarios (vía VIRTUAL_HOST)
-#   - Portainer (interfaz gráfica)
-#   - Prometheus y Grafana (acceso externo vía proxy)
-#
-# net_monitor: Red privada (LAN de gestión). Solo para:
-#   - Prometheus (recolecta métricas)
-#   - Node-exporter (envía telemetría)
-#   - Grafana (consulta Prometheus)
-#   - AISLADA: Las apps de usuarios NO acceden aquí por seguridad
-#
-networks:
-  net_proxy:
-    name: net_proxy
-    driver: bridge
-  net_monitor:
-    name: net_monitor
-    driver: bridge
-
-# ════════════════════════════════════════════════════════════════════════════════
-# VOLÚMENES PERSISTENTES (Almacenamiento Separado del Contenedor)
-# ════════════════════════════════════════════════════════════════════════════════
-# FUNCIONALIDAD:
-#   - certs_vol:      Certificados TLS generados por acme-companion
-#   - vhost_vol:      Configuración automática de virtual hosts (nginx-proxy)
-#   - html_vol:       Carpeta HTML para desafío ACME (validación Let's Encrypt)
-#   - acme_vol:       Estado y cache de acme.sh (renovaciones)
-#   - portainer_vol:  Base de datos y configuración de Portainer
-#   - grafana_vol:    Dashboards, datasources, users, plugins
-#   - prometheus_vol: Series temporales (histórico de métricas para análisis)
-#
-# VENTAJA: Si borramos los contenedores, los datos persisten.
-#          Si hacemos "docker compose pull && docker compose up -d", se recuperan.
-#
 volumes:
-  certs_vol:
-    name: vols_certs
-  vhost_vol:
-    name: vols_vhost
-  html_vol:
-    name: vols_html
-  acme_vol:
-    name: vols_acme
-  portainer_vol:
-    name: vols_portainer
-  grafana_vol:
-    name: vols_grafana
-  prometheus_vol:
-    name: vols_prometheus
+  portainer_data:
+  grafana_data:
+  prometheus_data:
+  certs:
+  vhost:
+  html:
+  acme:
