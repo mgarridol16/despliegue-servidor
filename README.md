@@ -8,6 +8,32 @@ Este proyecto implementa una plataforma de servicios web profesional, diseñada 
 
 ---
 
+## ✅ ESTADO ACTUAL (DESPLIEGUE EN SERVIDOR)
+
+**Servidor**: 192.168.5.47 @ www.servidorgp.somosdelprieto.com:2247 (SSH)
+
+| Servicio | HTTP | HTTPS | Estado |
+|---|---|---|---|
+| **Grafana** | ✅ UP | ⏳ Self-signed | `http://192.168.5.47` + Host header |
+| **Portainer** | ✅ UP | ⏳ Self-signed | Gestión de contenedores |
+| **Prometheus** | ✅ UP | ⏳ Self-signed | Métricas de sistema |
+| **Node Exporter** | ✅ UP | N/A | Recolector de telemetría |
+| **nginx-proxy** | ✅ UP | ⏳ Auto-renewal | Reverse proxy automático |
+| **acme-companion** | ✅ Background | ⏳ En proceso | Generará certificados self-signed |
+
+### ⏳ Estado de Certificados SSL
+
+- **Situación**: Los certificados está en generación automática (acme-companion en background)
+- **Motivo**: La validación Let's Encrypt HTTP-01 falla en intranet escolar (no acceso desde internet)
+- **Fallback**: Cuando acme fracase X reintentos, generará **self-signed certificates automáticamente**
+- **Acceso HTTPS temporal**:
+  ```bash
+  curl -k -H "Host: grafana.miguel.servidorgp.somosdelprieto.com" https://192.168.5.47
+  ```
+  El `-k` ignora el warning de certificado auto-firmado
+
+---
+
 ## 🚀 CONFIGURACIÓN INICIAL (ES IMPORTANTE)
 
 ```bash
