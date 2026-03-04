@@ -15,7 +15,7 @@ services:
       - "443:443"
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
-      - certs_vol:/etc/nginx/certs:ro
+      - certs_vol:/etc/nginx/certs
       - vhost_vol:/etc/nginx/vhost.d
       - html_vol:/usr/share/nginx/html
       - ./nginx/proxy-conf.d:/etc/nginx/conf.d/custom:ro
