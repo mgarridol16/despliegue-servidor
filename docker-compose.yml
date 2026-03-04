@@ -23,23 +23,23 @@ services:
       - backend
     restart: always
 
-  acme-companion:
-    image: nginxproxy/acme-companion:latest
-    container_name: nginx-proxy-acme
-    environment:
-      - DEFAULT_EMAIL=${ACME_EMAIL}
-      - NGINX_PROXY_CONTAINER=nginx-proxy
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - certs:/etc/nginx/certs
-      - vhost:/etc/nginx/vhost.d
-      - html:/usr/share/nginx/html
-      - acme:/etc/acme.sh
-    depends_on:
-      - nginx-proxy
-    networks:
-      - frontend
-    restart: always
+  # acme-companion:
+  #   image: nginxproxy/acme-companion:latest
+  #   container_name: nginx-proxy-acme
+  #   environment:
+  #     - DEFAULT_EMAIL=${ACME_EMAIL}
+  #     - NGINX_PROXY_CONTAINER=nginx-proxy
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+  #     - certs:/etc/nginx/certs
+  #     - vhost:/etc/nginx/vhost.d
+  #     - html:/usr/share/nginx/html
+  #     - acme:/etc/acme.sh
+  #   depends_on:
+  #     - nginx-proxy
+  #   networks:
+  #     - frontend
+  #   restart: always
 
   portainer:
     image: portainer/portainer-ce:${PORTAINER_VERSION}
