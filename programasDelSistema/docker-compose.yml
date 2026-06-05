@@ -1,7 +1,11 @@
+# ==============================================================================
+# INFRAESTRUCTURA DE MONITORIZACIÓN Y GESTIÓN (STACK-MIGUEL)
+# ==============================================================================
+
 services:
 
   # ─────────────────────────────────────────────────────────────
-  # PROXY INVERSO
+  # PROXY INVERSO: Puerta de entrada para gestionar el tráfico web
   # ─────────────────────────────────────────────────────────────
   nginx-proxy:
     image: nginxproxy/nginx-proxy:1.6
@@ -10,7 +14,7 @@ services:
     ports:
       - "80:80"
     volumes:
-      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - /var/run/docker.sock:/tmp/docker.sock:ro # Acceso al socket para auto-detección
       - vhost:/etc/nginx/vhost.d
       - html:/usr/share/nginx/html
       - ./nginx/conf.d/server-status.conf:/etc/nginx/conf.d/server-status.conf:ro
@@ -18,7 +22,7 @@ services:
       - net_proxy
 
   # ─────────────────────────────────────────────────────────────
-  # PORTAINER
+  # PORTAINER: Interfaz visual para gestión de contenedores Docker
   # ─────────────────────────────────────────────────────────────
   portainer:
     image: portainer/portainer-ce:latest
@@ -34,7 +38,7 @@ services:
       - net_proxy
 
   # ─────────────────────────────────────────────────────────────
-  # PROMETHEUS
+  # PROMETHEUS: Motor de recolección de series temporales
   # ─────────────────────────────────────────────────────────────
   prometheus:
     image: prom/prometheus:latest
@@ -51,16 +55,16 @@ services:
       - VIRTUAL_PORT=9090
     networks:
       - net_proxy
-      - net_monitor
+      - net_monitor # Conectado a la red de monitorización para ver los exporters
 
   # ─────────────────────────────────────────────────────────────
-  # NODE EXPORTER
+  # NODE EXPORTER: Agente que expone métricas de hardware del sistema
   # ─────────────────────────────────────────────────────────────
   node-exporter:
     image: prom/node-exporter:latest
     container_name: node-exporter
     restart: unless-stopped
-    pid: host
+    pid: host # Necesario para ver el sistema operativo real
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
@@ -74,7 +78,7 @@ services:
       - net_monitor
 
   # ─────────────────────────────────────────────────────────────
-  # NGINX EXPORTER
+  # NGINX EXPORTER: Extrae métricas del tráfico web procesado por Nginx
   # ─────────────────────────────────────────────────────────────
   nginx-exporter:
     image: nginx/nginx-prometheus-exporter:latest
@@ -89,7 +93,7 @@ services:
       - net_monitor
 
   # ─────────────────────────────────────────────────────────────
-  # GRAFANA
+  # GRAFANA: Panel de visualización de datos (Dashboards)
   # ─────────────────────────────────────────────────────────────
   grafana:
     image: grafana/grafana:latest
@@ -109,6 +113,7 @@ services:
       - net_proxy
       - net_monitor
 
+# Persistencia de datos para asegurar que no se pierdan al reiniciar
 volumes:
   vhost:
   html:
@@ -116,6 +121,7 @@ volumes:
   prometheus_data:
   grafana_data:
 
+# Redes externas pre-configuradas mediante scripts de automatización
 networks:
   net_proxy:
     name: net_proxy

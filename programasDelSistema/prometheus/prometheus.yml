@@ -1,23 +1,34 @@
+# ==============================================================================
+# CONFIGURACIÓN DE PROMETHEUS - CLÚSTER DE MONITORIZACIÓN (LAB-MIGUEL)
+# ==============================================================================
+
 global:
+  # Frecuencia con la que Prometheus "toca a la puerta" de los servicios
   scrape_interval: 15s
+  # Frecuencia para evaluar las reglas de alerta
   evaluation_interval: 15s
 
+  # Etiquetas globales: vital para distinguir datos cuando escales a otros entornos
   external_labels:
     cluster: 'lab-miguel'
     environment: 'production-miguel'
 
+# Configuración de los puntos de extracción (targets)
 scrape_configs:
 
+  # 1. Automonitorización: El propio Prometheus vigila su salud interna
   - job_name: prometheus
     static_configs:
       - targets:
           - localhost:9090
 
+  # 2. Nodo físico: Extrae métricas de hardware (CPU, RAM, DISCO)
   - job_name: node
     static_configs:
       - targets:
           - node-exporter:9100
 
+  # 3. Proxy Inverso: Extrae el estado del tráfico web en NGINX
   - job_name: nginx
     static_configs:
       - targets:
