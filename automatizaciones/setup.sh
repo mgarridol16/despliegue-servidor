@@ -23,8 +23,8 @@ GRAFANA_VERSION=latest
 EOF
 
 echo "🔧 PASO 3: Personalizando prometheus.yml"
-sed -i "s/cluster: 'lab-[a-zA-Z0-9-]*'/cluster: 'lab-${USERNAME}'/g" prometheus/prometheus.yml
-sed -i "s/environment: 'production-[a-zA-Z0-9-]*'/environment: 'production-${USERNAME}'/g" prometheus/prometheus.yml
+sed -i "s/cluster: 'lab-[a-zA-Z0-9-]*'/cluster: 'lab-${USERNAME}'/g" programasDelSistema/prometheus/prometheus.yml
+sed -i "s/environment: 'production-[a-zA-Z0-9-]*'/environment: 'production-${USERNAME}'/g" programasDelSistema/prometheus/prometheus.yml
 
 echo "🌐 PASO 4: Creando redes Docker"
 if command -v docker &> /dev/null; then
