@@ -6,45 +6,26 @@ networks:
 
 services:
   # ═══════════════════════════════════════════════════════════════════════════
-  # PROXY INVERSO + SSL AUTOMÁTICO
-  # ═══════════════════════════════════════════════════════════════════════════
+  # PROXY INVERSO (Sin SSL local)
+  # ════════════════════════════════════════════════════════════════════════════
   nginx-proxy:
     image: jwilder/nginx-proxy:latest
     container_name: nginx-proxy
     restart: always
     ports:
       - "80:80"
-      - "443:443"
     environment:
-      - DEFAULT_HOST=grafana.${MAIN_DOMAIN}
+      # Adaptado a la nueva nomenclatura con guiones
+      - DEFAULT_HOST=${USERNAME}-grafana.${MAIN_DOMAIN}
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
-      - certs:/etc/nginx/certs
-      - vhost:/etc/nginx/vhost.d
-      - html:/usr/share/nginx/html
+      # 1. Inyectamos tu configuración de métricas
+      - ./nginx/conf.d/metrics.conf:/etc/nginx/conf.d/metrics.conf:ro
+      # 2. Inyectamos tus optimizaciones globales (timeouts, buffers, hash bucket)
+      - ./nginx/proxy-conf.d/custom.conf:/etc/nginx/conf.d/custom.conf:ro
     networks:
       - net_proxy
       - net_monitor
-
-  # ─────────────────────────────────────────────────────────────────────────
-  # SSL AUTOMÁTICO (Let's Encrypt)
-  # ─────────────────────────────────────────────────────────────────────────
-  acme-companion:
-    image: jrcs/letsencrypt-nginx-proxy-companion:latest
-    container_name: acme-companion
-    restart: unless-stopped
-    depends_on:
-      - nginx-proxy
-    environment:
-      - NGINX_PROXY_CONTAINER=nginx-proxy
-      - DEFAULT_EMAIL=${ACME_EMAIL}
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - certs:/etc/nginx/certs
-      - vhost:/etc/nginx/vhost.d
-      - html:/usr/share/nginx/html
-    networks:
-      - net_proxy
 
   # ═══════════════════════════════════════════════════════════════════════════
   # GESTIÓN DE CONTENEDORES
@@ -58,10 +39,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer_data:/data
     environment:
-      - VIRTUAL_HOST=portainer.${MAIN_DOMAIN}
+      - VIRTUAL_HOST=${USERNAME}-portainer.${MAIN_DOMAIN}
       - VIRTUAL_PORT=9000
-      - LETSENCRYPT_HOST=portainer.${MAIN_DOMAIN}
-      - LETSENCRYPT_EMAIL=${ACME_EMAIL}
     networks:
       - net_proxy
 
@@ -76,10 +55,8 @@ services:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     environment:
-      - VIRTUAL_HOST=prometheus.${MAIN_DOMAIN}
+      - VIRTUAL_HOST=${USERNAME}-prometheus.${MAIN_DOMAIN}
       - VIRTUAL_PORT=9090
-      - LETSENCRYPT_HOST=prometheus.${MAIN_DOMAIN}
-      - LETSENCRYPT_EMAIL=${ACME_EMAIL}
     networks:
       - net_monitor
       - net_proxy
@@ -100,13 +77,14 @@ services:
     networks:
       - net_monitor
 
-  # Monitorización de nginx-proxy (opcional pero recomendado)
+  # Monitorización de nginx-proxy
   nginx-exporter:
     image: nginx/nginx-prometheus-exporter:latest
     container_name: nginx-exporter
     restart: unless-stopped
     command:
-      - '-nginx.scrape-uri=http://nginx-proxy:8080/stub_status'
+      # Apunta al stub_status interno que configuraste en metrics.conf
+      - '-nginx.scrape-uri=http://nginx-proxy/stub_status'
     networks:
       - net_monitor
       - net_proxy
@@ -132,12 +110,11 @@ services:
     restart: unless-stopped
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin123
-      - GF_SERVER_ROOT_URL=https://grafana.${MAIN_DOMAIN}
-      - GF_SERVER_DOMAIN=grafana.${MAIN_DOMAIN}
-      - VIRTUAL_HOST=grafana.${MAIN_DOMAIN}
+      # Ajustamos la URL root para que confíe en la cabecera HTTPS del proxy superior
+      - GF_SERVER_ROOT_URL=https://${USERNAME}-grafana.${MAIN_DOMAIN}
+      - GF_SERVER_DOMAIN=${USERNAME}-grafana.${MAIN_DOMAIN}
+      - VIRTUAL_HOST=${USERNAME}-grafana.${MAIN_DOMAIN}
       - VIRTUAL_PORT=3000
-      - LETSENCRYPT_HOST=grafana.${MAIN_DOMAIN}
-      - LETSENCRYPT_EMAIL=${ACME_EMAIL}
     volumes:
       - grafana_data:/var/lib/grafana
     depends_on:
@@ -151,7 +128,3 @@ volumes:
   portainer_data:
   grafana_data:
   prometheus_data:
-  certs:
-  vhost:
-  html:
-  acme:
