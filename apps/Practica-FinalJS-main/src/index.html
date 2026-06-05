@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MiappV01</title>
+    <link rel="stylesheet" href="./estilo.css">
+    <!-- Cargar Leaflet CSS y JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <!-- Cargar Leaflet Routing Machine -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+    <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+</head>
+<body>
+    <header class="cabecera">
+        <!-- Logo -->
+        <img src="./Imagenes/1.jpg" alt="Logo de la aplicación" class="logo">
+        <!-- Título -->
+        <h1>GasGasAPP</h1>
+    </header>
+    <nav class="menu">
+        <ul class="navegación">
+            <li><a href="">Inicio</a></li>
+            <li><a href="#gas">Gasolineras</a></li>
+            <li><a href="#contact">Tu Ruta</a></li>
+        </ul>
+    </nav>
+    <main class="Cuerpo">
+        <section class="nosotros" id="nous">
+            <h1 class="tituloNO">¿Quienes Somos?</h1>
+            <p class="NosotrosP">Hola, ¿No te has preguntado quienes somos? Yo te lo cuento, somos una app mediante una API en la que nos encargamos de monstrar información de todos los precios de las gasolineras segun la provincia que usted eligas 
+                es una forma de porder intentar ahorrarte un buen dinero para tu bolsillo ¡Corre usala!.
+            </p>
+        </section>
+        <section class="Api">
+            <h1 class="TiApi" id="gas">GASOLINERAS DISPONIBLES</h1>
+            <label for="provincia">Selecciona una provincia:</label>
+            <select id="provincia">
+                <option value="">Todas</option>
+                <!-- Las opciones se llenarán dinámicamente con JavaScript -->
+            </select>
+            <div id="contenedor" class="vehiculos"></div> <!-- Contenedor de tarjetas -->
+        </section>
+
+        <section class="mapa">
+            <h2>SIGUE TU MARAVILLOSO DESTINO</h2>
+            <div id="map" style="height: 500px; width: 100%;"></div> <!-- Mapa de OpenStreetMap -->
+        </section>
+
+        <section class="ruta">
+            <h2>Calcular Ruta</h2>
+            <label for="origen">Origen:</label>
+            <input type="text" id="origen" placeholder="Introduce tu ubicación">
+            <label for="destino">Destino:</label>
+            <input type="text" id="destino" placeholder="Introduce el destino">
+            <button onclick="calcularRuta()">Calcular Ruta</button>
+            <div id="rutaResultado"></div> <!-- Resultado de la ruta -->
+        </section>
+
+        <section class="contacto" id="contact">
+            <p>Puedes contactar con nosotros mediante nuestro numero de tlf: 674009824 o tambien puedes escribirnos por gmail: prueba@mail.com</p>
+        </section>
+    </main>
+    <footer class="pie">
+        <p>© 2025 Miapp</p>
+            <a href="https://www.paypal.com/donate?hosted_button_id=XXXXXXXXXXXXXX" target="_blank">
+                <img src="./Imagenes/4.png" alt="Donar con PayPal" style="height: 60px;">
+            </a>
+    </footer>
+    <script src="./javaScript.js"></script>
+</body>
+</html>

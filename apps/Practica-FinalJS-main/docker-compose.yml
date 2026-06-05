@@ -1,0 +1,18 @@
+services:
+  practica-js:
+    image: nginx:alpine
+    container_name: practicajs-web
+    restart: unless-stopped
+    volumes:
+      # Apuntamos a tu carpeta 'src' para que Nginx sirva esos archivos
+      - ./src:/usr/share/nginx/html:ro
+    environment:
+      # Todo hardcodeado y cumpliendo la norma estricta del instituto
+      - VIRTUAL_HOST=practicajs-miguel.servidorgp.somosdelprieto.com
+      - VIRTUAL_PORT=80
+    networks:
+      - net_proxy
+
+networks:
+  net_proxy:
+    external: true
