@@ -15,7 +15,7 @@ services:
       - /var/run/docker.sock:/tmp/docker.sock:ro
       - vhost:/etc/nginx/vhost.d
       - html:/usr/share/nginx/html
-      - ./nginx/proxy-conf.d/custom.conf:/etc/nginx/conf.d/custom.conf:ro
+      #- ./nginx/proxy-conf.d/custom.conf:/etc/nginx/conf.d/custom.conf:ro
     networks:
       - net_proxy
 
