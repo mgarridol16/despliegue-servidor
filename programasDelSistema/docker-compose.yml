@@ -1,8 +1,8 @@
 services:
 
-  # ─────────────────────────────────────────────
-  # PROXY INVERSO (CORREGIDO)
-  # ─────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────
+  # PROXY INVERSO
+  # ─────────────────────────────────────────────────────────────
   nginx-proxy:
     image: nginxproxy/nginx-proxy:1.6
     container_name: nginx-proxy
@@ -13,34 +13,31 @@ services:
       - /var/run/docker.sock:/tmp/docker.sock:ro
       - vhost:/etc/nginx/vhost.d
       - html:/usr/share/nginx/html
-    environment:
-      - DEFAULT_HOST=default.local
+      - ./server-status.conf:/etc/nginx/conf.d/server-status.conf:ro
     networks:
       - net_proxy
 
-
-  # ─────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────
   # PORTAINER
-  # ─────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────
   portainer:
-    image: portainer/portainer-ce:${PORTAINER_VERSION}
+    image: portainer/portainer-ce:latest
     container_name: portainer
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer_data:/data
     environment:
-      - VIRTUAL_HOST=${USERNAME}-portainer.${MAIN_DOMAIN}
+      - VIRTUAL_HOST=portainer-miguel.servidorgp.somosdelprieto.com
       - VIRTUAL_PORT=9000
     networks:
       - net_proxy
 
-
-  # ─────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────
   # PROMETHEUS
-  # ─────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────
   prometheus:
-    image: prom/prometheus:${PROMETHEUS_VERSION}
+    image: prom/prometheus:latest
     container_name: prometheus
     restart: unless-stopped
     command:
@@ -50,16 +47,15 @@ services:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     environment:
-      - VIRTUAL_HOST=${USERNAME}-prometheus.${MAIN_DOMAIN}
+      - VIRTUAL_HOST=prometheus-miguel.servidorgp.somosdelprieto.com
       - VIRTUAL_PORT=9090
     networks:
       - net_proxy
       - net_monitor
 
-
-  # ─────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────
   # NODE EXPORTER
-  # ─────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────
   node-exporter:
     image: prom/node-exporter:latest
     container_name: node-exporter
@@ -73,13 +69,13 @@ services:
       - --path.procfs=/host/proc
       - --path.sysfs=/host/sys
       - --path.rootfs=/rootfs
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
     networks:
       - net_monitor
 
-
-  # ─────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────
   # NGINX EXPORTER
-  # ─────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────
   nginx-exporter:
     image: nginx/nginx-prometheus-exporter:latest
     container_name: nginx-exporter
@@ -92,12 +88,11 @@ services:
       - net_proxy
       - net_monitor
 
-
-  # ─────────────────────────────────────────────
-  # GRAFANA (CORREGIDO)
-  # ─────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────
+  # GRAFANA
+  # ─────────────────────────────────────────────────────────────
   grafana:
-    image: grafana/grafana:${GRAFANA_VERSION}
+    image: grafana/grafana:latest
     container_name: grafana
     restart: unless-stopped
     volumes:
@@ -106,17 +101,13 @@ services:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin123
       - GF_USERS_ALLOW_SIGN_UP=false
-
-      # 🔥 IMPORTANTE (esto arregla routing)
-      - VIRTUAL_HOST=${USERNAME}-grafana.${MAIN_DOMAIN}
+      - GF_SERVER_ROOT_URL=https://grafana-miguel.servidorgp.somosdelprieto.com
+      - GF_SERVER_DOMAIN=grafana-miguel.servidorgp.somosdelprieto.com
+      - VIRTUAL_HOST=grafana-miguel.servidorgp.somosdelprieto.com
       - VIRTUAL_PORT=3000
-      - GF_SERVER_DOMAIN=${USERNAME}-grafana.${MAIN_DOMAIN}
-      - GF_SERVER_ROOT_URL=http://${USERNAME}-grafana.${MAIN_DOMAIN}
-
     networks:
       - net_proxy
       - net_monitor
-
 
 volumes:
   vhost:
@@ -125,12 +116,10 @@ volumes:
   prometheus_data:
   grafana_data:
 
-
 networks:
   net_proxy:
     name: net_proxy
     external: true
-
   net_monitor:
     name: net_monitor
     external: true
