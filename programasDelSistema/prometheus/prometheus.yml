@@ -3,7 +3,8 @@ global:
   evaluation_interval: 15s
 
   external_labels:
-    cluster: "lab-miguel"
+    cluster: 'lab-miguel'
+    environment: 'production-miguel'
 
 scrape_configs:
 
