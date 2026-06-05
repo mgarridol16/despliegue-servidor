@@ -1,8 +1,8 @@
 services:
 
-  # ─────────────────────────────────────────────────────────────
-  # PROXY INVERSO
-  # ─────────────────────────────────────────────────────────────
+  # ─────────────────────────────────────────────
+  # PROXY INVERSO (CORREGIDO)
+  # ─────────────────────────────────────────────
   nginx-proxy:
     image: nginxproxy/nginx-proxy:1.6
     container_name: nginx-proxy
@@ -13,12 +13,15 @@ services:
       - /var/run/docker.sock:/tmp/docker.sock:ro
       - vhost:/etc/nginx/vhost.d
       - html:/usr/share/nginx/html
+    environment:
+      - DEFAULT_HOST=default.local
     networks:
       - net_proxy
 
-  # ─────────────────────────────────────────────────────────────
+
+  # ─────────────────────────────────────────────
   # PORTAINER
-  # ─────────────────────────────────────────────────────────────
+  # ─────────────────────────────────────────────
   portainer:
     image: portainer/portainer-ce:${PORTAINER_VERSION}
     container_name: portainer
@@ -32,9 +35,10 @@ services:
     networks:
       - net_proxy
 
-  # ─────────────────────────────────────────────────────────────
+
+  # ─────────────────────────────────────────────
   # PROMETHEUS
-  # ─────────────────────────────────────────────────────────────
+  # ─────────────────────────────────────────────
   prometheus:
     image: prom/prometheus:${PROMETHEUS_VERSION}
     container_name: prometheus
@@ -52,9 +56,10 @@ services:
       - net_proxy
       - net_monitor
 
-  # ─────────────────────────────────────────────────────────────
+
+  # ─────────────────────────────────────────────
   # NODE EXPORTER
-  # ─────────────────────────────────────────────────────────────
+  # ─────────────────────────────────────────────
   node-exporter:
     image: prom/node-exporter:latest
     container_name: node-exporter
@@ -68,13 +73,13 @@ services:
       - --path.procfs=/host/proc
       - --path.sysfs=/host/sys
       - --path.rootfs=/rootfs
-      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
     networks:
       - net_monitor
 
-  # ─────────────────────────────────────────────────────────────
+
+  # ─────────────────────────────────────────────
   # NGINX EXPORTER
-  # ─────────────────────────────────────────────────────────────
+  # ─────────────────────────────────────────────
   nginx-exporter:
     image: nginx/nginx-prometheus-exporter:latest
     container_name: nginx-exporter
@@ -87,9 +92,10 @@ services:
       - net_proxy
       - net_monitor
 
-  # ─────────────────────────────────────────────────────────────
-  # GRAFANA
-  # ─────────────────────────────────────────────────────────────
+
+  # ─────────────────────────────────────────────
+  # GRAFANA (CORREGIDO)
+  # ─────────────────────────────────────────────
   grafana:
     image: grafana/grafana:${GRAFANA_VERSION}
     container_name: grafana
@@ -100,11 +106,17 @@ services:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin123
       - GF_USERS_ALLOW_SIGN_UP=false
+
+      # 🔥 IMPORTANTE (esto arregla routing)
       - VIRTUAL_HOST=${USERNAME}-grafana.${MAIN_DOMAIN}
       - VIRTUAL_PORT=3000
+      - GF_SERVER_DOMAIN=${USERNAME}-grafana.${MAIN_DOMAIN}
+      - GF_SERVER_ROOT_URL=http://${USERNAME}-grafana.${MAIN_DOMAIN}
+
     networks:
       - net_proxy
       - net_monitor
+
 
 volumes:
   vhost:
@@ -113,10 +125,12 @@ volumes:
   prometheus_data:
   grafana_data:
 
+
 networks:
   net_proxy:
     name: net_proxy
     external: true
+
   net_monitor:
     name: net_monitor
     external: true
