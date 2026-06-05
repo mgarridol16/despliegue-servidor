@@ -1,0 +1,128 @@
+services:
+
+  # ─────────────────────────────────────────────────────────────
+  # PROXY INVERSO
+  # ─────────────────────────────────────────────────────────────
+  nginx-proxy:
+    image: nginxproxy/nginx-proxy:1.6
+    container_name: nginx-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    environment:
+      - DEFAULT_HOST=${USERNAME}-grafana.${MAIN_DOMAIN}
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - vhost:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
+      - ./nginx/proxy-conf.d/custom.conf:/etc/nginx/conf.d/custom.conf:ro
+    networks:
+      - net_proxy
+
+  # ─────────────────────────────────────────────────────────────
+  # PORTAINER
+  # ─────────────────────────────────────────────────────────────
+  portainer:
+    image: portainer/portainer-ce:${PORTAINER_VERSION}
+    container_name: portainer
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    environment:
+      - VIRTUAL_HOST=${USERNAME}-portainer.${MAIN_DOMAIN}
+      - VIRTUAL_PORT=9000
+    networks:
+      - net_proxy
+
+  # ─────────────────────────────────────────────────────────────
+  # PROMETHEUS
+  # ─────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:${PROMETHEUS_VERSION}
+    container_name: prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    environment:
+      - VIRTUAL_HOST=${USERNAME}-prometheus.${MAIN_DOMAIN}
+      - VIRTUAL_PORT=9090
+    networks:
+      - net_proxy
+      - net_monitor
+
+  # ─────────────────────────────────────────────────────────────
+  # NODE EXPORTER
+  # ─────────────────────────────────────────────────────────────
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: unless-stopped
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/rootfs
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
+    networks:
+      - net_monitor
+
+  # ─────────────────────────────────────────────────────────────
+  # NGINX EXPORTER
+  # ─────────────────────────────────────────────────────────────
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:latest
+    container_name: nginx-exporter
+    restart: unless-stopped
+    command:
+      - --nginx.scrape-uri=http://nginx-proxy/stub_status
+    depends_on:
+      - nginx-proxy
+    networks:
+      - net_proxy
+      - net_monitor
+
+  # ─────────────────────────────────────────────────────────────
+  # GRAFANA
+  # ─────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:${GRAFANA_VERSION}
+    container_name: grafana
+    restart: unless-stopped
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=https://${USERNAME}-grafana.${MAIN_DOMAIN}
+      - GF_SERVER_DOMAIN=${USERNAME}-grafana.${MAIN_DOMAIN}
+      - VIRTUAL_HOST=${USERNAME}-grafana.${MAIN_DOMAIN}
+      - VIRTUAL_PORT=3000
+    networks:
+      - net_proxy
+      - net_monitor
+
+volumes:
+  vhost:
+  html:
+  portainer_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  net_proxy:
+    name: net_proxy
+    external: true
+
+  net_monitor:
+    name: net_monitor
+    external: true
