@@ -9,13 +9,10 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
-    environment:
-      - DEFAULT_HOST=${USERNAME}-grafana.${MAIN_DOMAIN}
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
       - vhost:/etc/nginx/vhost.d
       - html:/usr/share/nginx/html
-      #- ./nginx/proxy-conf.d/custom.conf:/etc/nginx/conf.d/custom.conf:ro
     networks:
       - net_proxy
 
@@ -103,8 +100,6 @@ services:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin123
       - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_SERVER_ROOT_URL=https://${USERNAME}-grafana.${MAIN_DOMAIN}
-      - GF_SERVER_DOMAIN=${USERNAME}-grafana.${MAIN_DOMAIN}
       - VIRTUAL_HOST=${USERNAME}-grafana.${MAIN_DOMAIN}
       - VIRTUAL_PORT=3000
     networks:
@@ -122,7 +117,6 @@ networks:
   net_proxy:
     name: net_proxy
     external: true
-
   net_monitor:
     name: net_monitor
     external: true
